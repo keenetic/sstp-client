@@ -29,6 +29,7 @@
 #include <stdio.h>
 #include <syslog.h>
 #include <string.h>
+#include <time.h>
 #include <sys/uio.h>
 #include <sys/un.h>
 #include <sys/socket.h>
