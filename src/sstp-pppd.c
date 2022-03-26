@@ -28,6 +28,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <paths.h>
+#include <fcntl.h>
+#include <sys/ioctl.h>
+#include <net/if.h>
+#include <linux/if_tun.h>
 
 #include "sstp-private.h"
 
@@ -53,6 +57,9 @@ struct sstp_pppd
     /*< Listener for retrieving data from pppd */
     event_st *ev_recv;
 
+    /*< Listener for data from TAP */
+    event_st *ev_eth_recv;
+
     /*< The event base */
     event_base_st *ev_base;
 
@@ -67,6 +74,9 @@ struct sstp_pppd
 
     /*< The socket to pppd */
     int sock;
+
+    /*< Socket to TAP */
+    int sock_tap;
 
     /*< Should we notify client of ip_up */
     int ip_up;
@@ -480,6 +490,168 @@ done:
     return status;
 }
 
+static void eth_send_complete(sstp_stream_st *stream, sstp_buff_st *buf,
+    sstp_pppd_st *ctx, status_t status)
+{
+    if (SSTP_OKAY != status)
+    {
+        log_err("TODO: Handle shutdown here");
+    }
+}
+
+static void sstp_eth_recv(int fd, short event, sstp_pppd_st *ctx)
+{
+    sstp_buff_st *tx = ctx->tx_buf;
+    status_t ret = SSTP_FAIL;
+
+    /* Initialize TX-buffer */
+    sstp_buff_reset(tx);
+
+    /* Initialize send buffer */
+    ret = sstp_pkt_init(tx, SSTP_PKT_ETHERNET);
+    if (SSTP_OKAY != ret)
+    {
+        goto done;
+    }
+
+    /* Receive a chunk */
+    const ssize_t n = read(fd, tx->data + tx->len, tx->max - tx->len);
+
+    if (n < 0 && errno == EAGAIN)
+    {
+       goto done;
+    }
+
+    if (n <= 0)
+    {
+        if (ctx->notify)
+        {
+            ctx->notify(ctx->arg, SSTP_PPP_DOWN);
+        }
+        goto done;
+    }
+
+    tx->len += n;
+
+    /* Update the final length of the packet */
+    sstp_pkt_update(tx);
+    sstp_pkt_trace(tx, SSTP_DIR_SEND);
+
+    /* Send an Eth frame */
+    ret = sstp_stream_send(ctx->stream, tx, (sstp_complete_fn) 
+            eth_send_complete, ctx, 1);
+    if (SSTP_OKAY != ret)
+    {
+        goto done;
+    }
+
+    /* Record the number of bytes sent */
+    ppp_record_sent(ctx, tx->len);
+
+    switch (ret)
+    {
+    case SSTP_INPROG:
+        /* Let the eth_send_complete finish it */
+        break;
+
+    case SSTP_OKAY:
+        /* Re-add the event to receive more */
+        event_add(ctx->ev_eth_recv, NULL);
+        break;
+
+    case SSTP_FAIL:
+    default:
+        log_err("TODO: Handle failure of processing");
+        break;
+    }
+
+done:
+
+    return;
+}
+
+status_t sstp_eth_send(sstp_pppd_st *ctx, const char *buf, int len)
+{
+    status_t status = SSTP_FAIL;
+
+    /* Record the number of bytes received */
+    ppp_record_recv(ctx, len);
+
+    /* Write the data back to the pppd */
+    const ssize_t ret = write(ctx->sock_tap, buf, len);
+
+    if (ret < 0)
+    {
+        if (errno != EAGAIN &&
+            errno != EIO)
+        {
+            log_err("Unable to write frame to TAP: %s", strerror(errno));
+            goto done;
+        }
+    }
+
+    if (ret != len)
+    {
+        log_err("Could not complete write of frame");
+        goto done;
+    }
+
+    /* Success */
+    status = SSTP_OKAY;
+
+done:
+    
+    return status;
+}
+
+static status_t sstp_tap_feedback(sstp_pppd_st *ctx, sstp_option_st *opts,
+        const char *tap_name)
+{
+    const char *args[6] = {};
+    sstp_task_st *task;
+    int i = 0;
+    int ret = 0;
+
+    if (opts->tap_fb == NULL)
+    {
+        return SSTP_OKAY;
+    }
+
+    args[i++] = opts->tap_fb;
+    args[i++] = opts->tap_fb;
+    args[i++] = opts->ipparam;
+    args[i++] = tap_name;
+    args[i++] = NULL;
+
+    /* Create the task */
+    ret = sstp_task_new(&task, SSTP_TASK_USEPTY);
+    if (SSTP_OKAY != ret)
+    {
+        log_err("Could not create feedback\n");
+        return SSTP_FAIL;
+    }
+
+    /* Start the task */
+    ret = sstp_task_start(task, args);
+    if (SSTP_OKAY != ret)
+    {
+        sstp_task_destroy(task);
+        log_err("Could not start the feedbavk\n");
+        return SSTP_FAIL;
+    }
+
+    /* Wait for the task to terminate */
+    ret = sstp_task_wait(task, NULL, 0);
+    if (SSTP_OKAY != ret)
+    {
+        sstp_task_destroy(task);
+        log_err("Could not collect child\n");
+        return SSTP_FAIL;
+    }
+
+    sstp_task_destroy(task);
+    return SSTP_OKAY;
+}
 
 status_t sstp_pppd_start(sstp_pppd_st *ctx, sstp_option_st *opts, 
         const char *sockname)
@@ -592,6 +764,47 @@ status_t sstp_pppd_start(sstp_pppd_st *ctx, sstp_option_st *opts,
 
     /* Add the receive event */
     event_add(ctx->ev_recv, NULL);
+
+    if (opts->enable & SSTP_OPT_ETHERNET)
+    {
+        ctx->sock_tap = open("/dev/net/tun", O_RDWR);
+
+        if (ctx->sock_tap < 0) {
+            ctx->sock_tap = -1;
+            log_err("failed to open TAP device: %s", strerror(errno));
+            goto done;
+        }
+
+        struct ifreq ifr;
+
+        memset(&ifr, 0, sizeof(ifr));
+        ifr.ifr_flags = IFF_NO_PI | IFF_TAP;
+
+        if (ioctl(ctx->sock_tap, TUNSETIFF, (void *) &ifr) < 0){
+            log_err("failed to setup TAP device: %s", strerror(errno));
+            close(ctx->sock_tap);
+            goto done;
+        }
+
+        log_info("new TAP device is '%s'", ifr.ifr_name);
+
+        int value = fcntl(ctx->sock_tap, F_GETFL);
+        if (value < 0 || fcntl(ctx->sock_tap, F_SETFL, value | O_NONBLOCK) < 0) {
+            log_err("failed to set nonblocking mode: %s\n", strerror(errno));
+            close(ctx->sock_tap);
+            goto done;
+        }
+
+        sstp_tap_feedback(ctx, opts, ifr.ifr_name);
+
+        ctx->ev_eth_recv = event_new(ctx->ev_base, ctx->sock_tap, EV_READ,
+                (event_fn) sstp_eth_recv, ctx);
+
+        event_add(ctx->ev_eth_recv, NULL);
+
+    } else {
+        ctx->sock_tap = -1;
+    }
 
     /* Success! */
     status = SSTP_OKAY;
@@ -710,6 +923,12 @@ void sstp_pppd_free(sstp_pppd_st *ctx)
     {
         event_del(ctx->ev_recv);
         event_free(ctx->ev_recv);
+    }
+
+    if (ctx->ev_eth_recv)
+    {
+        event_del(ctx->ev_eth_recv);
+        event_free(ctx->ev_eth_recv);
     }
 
     /* Free pppd context */

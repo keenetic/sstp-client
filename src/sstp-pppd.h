@@ -101,6 +101,8 @@ status_t sstp_pppd_stop(sstp_pppd_st *ctx);
  */
 status_t sstp_pppd_send(sstp_pppd_st *ctx, const char *buf, int len);
 
+status_t sstp_eth_send(sstp_pppd_st *ctx, const char *buf, int len);
+
 
 /*!
  * @brief Create the pppd context

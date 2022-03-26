@@ -56,6 +56,7 @@ const char pppd_version [] = VERSION;
 /*! The socket we send sstp-client our MPPE keys */
 static char sstp_sock[SSTP_MAX_BUFLEN+1];
 static char *sstp_server = "0.0.0.0";
+static bool sstp_ethernet = 0;
 
 /*! Set of options required for this module */
 static option_t sstp_option [] = 
@@ -66,6 +67,9 @@ static option_t sstp_option [] =
     },
     { "sstp-server", o_string, &sstp_server,
       "SSTP server IP"
+    },
+    { "sstp-ethernet", o_bool, &sstp_ethernet,
+      "SSTP ethernet toggle"
     }
 };
 
@@ -328,7 +332,8 @@ static void sstp_phasechange(void *dummy, int arg)
 
     sstp_pre_up_executed++;
 
-    script_sstp(path_preup);
+    if (!sstp_ethernet)
+        script_sstp(path_preup);
 
     /* auth-up notifier */
     sstp_ip_up(NULL, 0);

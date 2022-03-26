@@ -212,7 +212,10 @@ static void sstp_client_state_cb(sstp_client_st *client, sstp_state_t event)
     case SSTP_CALL_ESTABLISHED:
 
         log_info("Connection Established");
-        
+
+        sstp_state_set_forward_ethernet(client->state, (sstp_state_forward_fn)
+                sstp_eth_send);
+
         /* Enter the privilege separation directory */
         if (getuid() == 0)
         {

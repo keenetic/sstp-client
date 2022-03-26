@@ -50,12 +50,12 @@ status_t sstp_pkt_init(sstp_buff_st *buf, sstp_msg_t type)
     /* Set the version, and flags */
     pkt = (sstp_pkt_st*) &buf->data;
     pkt->version = SSTP_PROTO_VER;
-    pkt->flags   = (type != SSTP_MSG_DATA)
+    pkt->flags   = (type != SSTP_MSG_DATA && type != SSTP_PKT_ETHERNET)
         ? SSTP_MSG_FLAG_CTRL
-        : 0;
+        : (uint8_t) type;
 
     /* Handle Control Messages */
-    if (SSTP_MSG_DATA != type)
+    if (SSTP_MSG_DATA != type && SSTP_PKT_ETHERNET != type)
     {
         sstp_ctrl_st *ctrl = NULL;
         
@@ -200,9 +200,15 @@ sstp_pkt_t sstp_pkt_type(sstp_buff_st *buf, sstp_msg_t *type)
 
         return SSTP_PKT_CTRL;
     }
-    
+
+    sstp_pkt_t t = (pkt->flags == SSTP_PKT_ETHERNET) ?
+        SSTP_PKT_ETHERNET :
+        SSTP_PKT_DATA;
+
     /* Not a control packet */
-    return SSTP_PKT_DATA;
+    return (pkt->flags == SSTP_PKT_ETHERNET) ?
+        SSTP_PKT_ETHERNET :
+        SSTP_PKT_DATA;
 }
 
 

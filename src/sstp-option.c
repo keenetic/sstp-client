@@ -222,6 +222,14 @@ static void sstp_parse_option(sstp_option_st *ctx, int argc, char **argv, int in
         ctx->enable |= SSTP_OPT_ANON_DH;
         break;
 
+    case 18:
+        ctx->enable |= SSTP_OPT_ETHERNET;
+        break;
+
+    case 19:
+        ctx->tap_fb = strdup(optarg);
+        break;
+
     default:
         sstp_usage_die(argv[0], -1, "Unrecognized command line option");
         break;
@@ -269,6 +277,9 @@ void sstp_option_free(sstp_option_st *ctx)
     if (ctx->user) {
         free(ctx->user);
     }
+    if (ctx->tap_fb) {
+        free(ctx->tap_fb);
+    }
     /* Reset the entire structure */
     memset(ctx, 0, sizeof(sstp_option_st));
 }
@@ -297,6 +308,8 @@ int sstp_parse_argv(sstp_option_st *ctx, int argc, char **argv)
         { "tls-ext",        no_argument,       NULL,  0  }, /* 15 */
         { "version",        no_argument,       NULL, 'v' },
         { "anon-dh",        no_argument,       NULL,  0  },
+        { "ethernet",       no_argument,       NULL,  0  },
+        { "tap-fb",         required_argument, NULL,  0  },
         { 0, 0, 0, 0 }
     };
 

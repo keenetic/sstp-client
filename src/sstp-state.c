@@ -50,6 +50,8 @@ struct sstp_state
 
     sstp_state_forward_fn forward_cb;
 
+    sstp_state_forward_fn forward_ethernet_cb;
+
     /*! The state transition function */
     sstp_state_change_fn state_cb;
 
@@ -82,6 +84,12 @@ void sstp_state_set_forward(sstp_state_st *state, sstp_state_forward_fn
 {
     state->forward_cb = forward;
     state->fwctx = arg;
+}
+
+void sstp_state_set_forward_ethernet(sstp_state_st *state, sstp_state_forward_fn
+        forward)
+{
+    state->forward_ethernet_cb = forward;
 }
 
 /*!
@@ -425,6 +433,26 @@ static status_t sstp_state_handle_data(sstp_state_st *state,
     return ret;
 }
 
+static status_t sstp_state_handle_ethernet(sstp_state_st *state, 
+        sstp_buff_st *buf)
+{
+    status_t ret = SSTP_FAIL;
+
+    if (state->forward_ethernet_cb == NULL) {
+        return SSTP_OKAY;
+    }
+
+    /* Forward the data back to the pppd layer */
+    ret = state->forward_ethernet_cb(state->fwctx, sstp_pkt_data(buf), 
+            sstp_pkt_data_len(buf));
+    if (SSTP_OKAY != ret)
+    {
+        log_err("Could not forward packet to TAP");
+    }
+
+    return ret;
+}
+
 /*!
  * @brief Handle the sstp packet received
  */
@@ -440,6 +468,10 @@ static void sstp_state_handle_packet(sstp_state_st *ctx, sstp_buff_st *buf)
     {
     case SSTP_PKT_DATA:
         sstp_state_handle_data(ctx, buf);
+        break;
+
+    case SSTP_PKT_ETHERNET:
+        sstp_state_handle_ethernet(ctx, buf);
         break;
 
     case SSTP_PKT_CTRL:

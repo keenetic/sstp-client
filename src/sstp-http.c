@@ -62,6 +62,8 @@ struct sstp_http
     /*! Value of Host: HTTP header */
     const char *host;
 
+    int eth_requested;
+
     /*! The caller supplied argument */
     void *uarg;
 
@@ -111,6 +113,7 @@ status_t sstp_http_create(sstp_http_st **http, const char *server,
     (*http)->server  = server;
     (*http)->host    = opts->host ?: opts->server;
     (*http)->mode    = mode;
+    (*http)->eth_requested = (opts->enable & SSTP_OPT_ETHERNET);
 
     /* Create the buffer */
     ret = sstp_buff_create(&(*http)->buf, 8192);
@@ -205,6 +208,26 @@ static void sstp_recv_hello_complete(sstp_stream_st *client,
         }
     }
 
+    if (http->eth_requested)
+    {
+        entry = sstp_http_get_header("X-Ethernet", attr, array);
+        if (entry != NULL)
+        {
+            if (strcasecmp(entry->value, "true"))
+            {
+                log_err("Error: Ethernet mode requested, but server doesn't understand us");
+                goto done;
+            } else
+            {
+                log_info("Ethernet mode acknowleged");
+            }
+        } else
+        {
+            log_err("Error: Ethernet mode requested, but server doesn't understand us");
+            goto done;
+        }
+    }
+
     status = SSTP_OKAY;
 
 done:
@@ -278,6 +301,15 @@ static status_t sstp_http_send_hello(sstp_http_st *http,
     if (SSTP_OKAY != ret)
     {
         return ret;
+    }
+
+    if (http->eth_requested) {
+        ret = sstp_buff_print(http->buf, "X-Ethernet: true\r\n");
+        if (SSTP_OKAY != ret)
+        {
+            return ret;
+        }
+        log_info("Requesting Ethernet mode from server...");
     }
 
     /* Add the UUID attribute */

@@ -89,6 +89,9 @@ status_t sstp_state_mppe_keys(sstp_state_st *state, unsigned char *skey,
 void sstp_state_set_forward(sstp_state_st *state, sstp_state_forward_fn 
         forward, void *arg);
 
+void sstp_state_set_forward_ethernet(sstp_state_st *state, sstp_state_forward_fn 
+        forward);
+
 /*!
  * @brief Will start the SSTP handshake
  */

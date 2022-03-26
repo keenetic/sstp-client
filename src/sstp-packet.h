@@ -63,6 +63,7 @@ typedef enum
     SSTP_PKT_UNKNOWN      = 0,
     SSTP_PKT_DATA         = 1,
     SSTP_PKT_CTRL         = 2,
+    SSTP_PKT_ETHERNET     = 0xfe,
 
 } sstp_pkt_t;
 

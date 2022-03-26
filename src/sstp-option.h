@@ -34,6 +34,7 @@
 #define SSTP_OPT_SAVEROUTE      0x0020
 #define SSTP_OPT_TLSEXT         0x0040
 #define SSTP_OPT_ANON_DH        0x0080
+#define SSTP_OPT_ETHERNET       0x0100
 
 
 /*!
@@ -85,6 +86,8 @@ typedef struct
 
     /*! The arguments vector to pppd */
     char **pppdargv;
+
+    char *tap_fb;
 
 } sstp_option_st;
 
