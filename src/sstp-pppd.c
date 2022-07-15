@@ -496,6 +496,8 @@ static void eth_send_complete(sstp_stream_st *stream, sstp_buff_st *buf,
     if (SSTP_OKAY != status)
     {
         log_err("TODO: Handle shutdown here");
+    } else {
+        event_add(ctx->ev_eth_recv, NULL);
     }
 }
 
@@ -519,6 +521,8 @@ static void sstp_eth_recv(int fd, short event, sstp_pppd_st *ctx)
 
     if (n < 0 && errno == EAGAIN)
     {
+       event_add(ctx->ev_eth_recv, NULL);
+
        goto done;
     }
 
@@ -540,10 +544,6 @@ static void sstp_eth_recv(int fd, short event, sstp_pppd_st *ctx)
     /* Send an Eth frame */
     ret = sstp_stream_send(ctx->stream, tx, (sstp_complete_fn) 
             eth_send_complete, ctx, 1);
-    if (SSTP_OKAY != ret)
-    {
-        goto done;
-    }
 
     /* Record the number of bytes sent */
     ppp_record_sent(ctx, tx->len);
@@ -588,8 +588,7 @@ status_t sstp_eth_send(sstp_pppd_st *ctx, const char *buf, int len)
             log_err("Unable to write frame to TAP: %s", strerror(errno));
             goto done;
         }
-    }
-
+    } else
     if (ret != len)
     {
         log_err("Could not complete write of frame");
