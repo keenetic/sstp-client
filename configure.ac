@@ -52,7 +52,7 @@ AC_ARG_ENABLE(user,
     AC_HELP_STRING([--enable-user=user], [Drop privileges after start to this user (default: sstpc)]))
 AS_IF([ test "${enable_user}" = "yes" || test x"${enable_user}" = x"" ],
     [enable_user="sstpc"],
-    [enable_user="root"])
+    [enable_user="${enable_user}"])
 AC_SUBST([enable_user])
 AC_DEFINE_UNQUOTED(SSTP_USER, "${enable_user}", The sstpc privilege drop user)
 
@@ -62,7 +62,7 @@ AC_ARG_ENABLE(group,
     AC_HELP_STRING([--enable-group=group], [Drop privileges after start to this group (default: sstpc)]))
 AS_IF([ test "${enable_group}" = "yes" || test x"${enable_group}" = x"" ],
     [enable_group="sstpc"],
-    [enable_group="root"])
+    [enable_group="${enable_group}"])
 AC_SUBST([enable_group])
 AC_DEFINE_UNQUOTED(SSTP_GROUP, "${enable_group}", The sstpc privilege drop group)
 
