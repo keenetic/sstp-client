@@ -40,6 +40,22 @@
 #include "sstp-log-private.h"
 
 
+static inline uint8_t level_to_syslog(uint8_t level)
+{
+    const uint8_t a [] = {
+        [SSTP_LOG_ERR] = LOG_ERR,
+        [SSTP_LOG_WARN] = LOG_WARNING,
+        [SSTP_LOG_INFO] = LOG_INFO
+    };
+
+    if (level >= sizeof(a)/sizeof(a[0]))
+    {
+        return LOG_DEBUG;
+    }
+
+    return a[level];
+}
+
 /*! 
  * @brief Write a syslog message to the /dev/log socket
  *
@@ -69,7 +85,7 @@ static void sstp_syslog_write(log_ctx_st *ctx, log_msg_st *msg,
     }
 
     /* Configure the log-level of the message */
-    len += sprintf(buf + len, "<%d>", LOG_LOCAL0 | ((7 - msg->msg_level) & 0x07));
+    len += sprintf(buf + len, "<%d>", level_to_syslog(msg->msg_level));
 
     /* Get the time stamp */
     attr = table[LOG_ATTR_TIME];
