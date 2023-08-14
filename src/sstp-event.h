@@ -57,7 +57,7 @@ status_t sstp_event_mppe_result(sstp_event_st *ctx, uint8_t **skey,
 /*!
  * @brief Shutdown and remove the socket
  */
-void sstp_event_free(sstp_event_st *ctx);
+void sstp_event_free(sstp_event_st *ctx, sstp_option_st *opts);
 
 
 #endif

@@ -729,7 +729,7 @@ static void sstp_client_free(sstp_client_st *client)
     /* Close the IPC */
     if (client->event)
     {
-        sstp_event_free(client->event);
+        sstp_event_free(client->event, &client->option);
         client->event = NULL;
     }
 

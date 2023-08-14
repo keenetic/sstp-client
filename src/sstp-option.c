@@ -372,12 +372,6 @@ int sstp_parse_argv(sstp_option_st *ctx, int argc, char **argv)
         ctx->priv_group = strdup(SSTP_GROUP);
     }
 
-    /* If not specified, use the default value */
-    if (!ctx->priv_dir)
-    {
-        ctx->priv_dir = strdup(SSTP_RUNTIME_DIR);
-    }
-
     /* At least one argument is required */
     if (argc <= optind)
     {

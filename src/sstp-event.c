@@ -382,7 +382,7 @@ done:
 }
 
 
-void sstp_event_free(sstp_event_st *ctx)
+void sstp_event_free(sstp_event_st *ctx, sstp_option_st *opts)
 {
     /* Remove the IPC socket */
     if (ctx->sockname[0])
@@ -390,7 +390,7 @@ void sstp_event_free(sstp_event_st *ctx)
         const char *name = ctx->sockname;
         
         /* In case we are running in a sandbox */
-        if (getuid() != 0)
+        if (opts->priv_dir && getuid() != 0)
         {
             name = rindex(ctx->sockname, '/')+1;
         }
