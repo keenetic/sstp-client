@@ -507,6 +507,10 @@ done:
     return ret;
 }
 
+static size_t padding_cb(SSL *s, int type, size_t len, void *arg)
+{
+    return rand() % ((len > 128) ? 128 : len); 
+}
 
 /*!
  * @brief Perform the global SSL initializers
@@ -536,14 +540,10 @@ static status_t sstp_init_ssl(sstp_client_st *client, sstp_option_st *opt)
     }
 
     /* Configure the crypto options, eliminate SSLv2, SSLv3 */
-    status = SSL_CTX_set_options(
-        client->ssl_ctx,
-        SSL_OP_ALL |
-            SSL_OP_NO_SSLv2 |
-            SSL_OP_NO_SSLv3);
+    status = SSL_CTX_set_min_proto_version(client->ssl_ctx, TLS1_VERSION);
     if (status == -1)
     {
-        log_err("Could not set SSL options");
+        log_err("Could not set minimal SSL version");
         goto done;
     }
 
@@ -598,6 +598,9 @@ static status_t sstp_init_ssl(sstp_client_st *client, sstp_option_st *opt)
     {
         SSL_CTX_set_security_level(client->ssl_ctx, 0);
     }
+
+    /* Enable padding */
+    SSL_CTX_set_record_padding_callback(client->ssl_ctx, padding_cb);
 
     /*! Success */
     retval = SSTP_OKAY;

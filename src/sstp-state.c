@@ -519,7 +519,7 @@ static void sstp_state_recv(sstp_stream_st *stream, sstp_buff_st *buf,
 
     /* Setup a receiver for SSTP messages */
     sstp_stream_setrecv(ctx->stream, sstp_stream_recv_sstp, ctx->rx_buf,
-            (sstp_complete_fn) sstp_state_recv, ctx, 60);
+            (sstp_complete_fn) sstp_state_recv, ctx, 40 + (rand() % 20));
 }
 
 

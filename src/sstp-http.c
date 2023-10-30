@@ -313,11 +313,28 @@ static status_t sstp_http_send_hello(sstp_http_st *http,
     }
 
     /* Add the UUID attribute */
-    ret = sstp_buff_print(http->buf, "SSTPCORRELATIONID: %s\r\n\r\n", 
+    ret = sstp_buff_print(http->buf, "SSTPCORRELATIONID: %s\r\n", 
             http->uuid, strlen(http->uuid));
     if (SSTP_OKAY != ret)
     {
         return ret;
+    }
+
+    {
+        char padbuf[96];
+        const size_t padbuflen = 2 + rand() % (sizeof(padbuf) - 2);
+
+        for (size_t i = 0; i < padbuflen - 1; ++i)
+            padbuf[i] = rand() % 26 + (rand() % 2 ? 'a' : 'A');
+
+        padbuf[padbuflen - 1] = '\0';
+
+        ret = sstp_buff_print(http->buf, "X-Padding: %s\r\n\r\n", 
+                padbuf, strlen(padbuf));
+        if (SSTP_OKAY != ret)
+        {
+            return ret;
+        }
     }
 
     /* Send the buffer */
