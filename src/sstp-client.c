@@ -69,6 +69,9 @@ static const char* const sstp_client_ssl_ciphers_anon_dh =
     ":AES128-SHA:AES256-SHA:DES-CBC3-SHA:AECDH:ADH" \
     ":!EXPORT:!DES:!MD5:!PSK:!RC4:!DSS";
 
+static const char* const sstp_client_ssl_ciphers_tls13 =
+    "TLS_CHACHA20_POLY1305_SHA256:TLS_AES_128_GCM_SHA256:TLS_AES_256_GCM_SHA384";
+
 /*! Global context for the sstp-client */
 static sstp_client_st client;
 
@@ -575,6 +578,15 @@ static status_t sstp_init_ssl(sstp_client_st *client, sstp_option_st *opt)
     if (status != 1)
     {
         log_err("Could not set SSL ciphersuites");
+        goto done;
+    }
+
+    status = SSL_CTX_set_ciphersuites(
+        client->ssl_ctx,
+        sstp_client_ssl_ciphers_tls13);
+    if (status != 1)
+    {
+        log_err("Could not set TLS 1.3 ciphersuites");
         goto done;
     }
 
