@@ -230,6 +230,10 @@ static void sstp_parse_option(sstp_option_st *ctx, int argc, char **argv, int in
         ctx->tap_fb = strdup(optarg);
         break;
 
+    case 20:
+        ctx->secret = strdup(optarg);
+        break;
+
     default:
         sstp_usage_die(argv[0], -1, "Unrecognized command line option");
         break;
@@ -280,6 +284,9 @@ void sstp_option_free(sstp_option_st *ctx)
     if (ctx->tap_fb) {
         free(ctx->tap_fb);
     }
+    if (ctx->secret) {
+        free(ctx->secret);
+    }
     /* Reset the entire structure */
     memset(ctx, 0, sizeof(sstp_option_st));
 }
@@ -310,6 +317,7 @@ int sstp_parse_argv(sstp_option_st *ctx, int argc, char **argv)
         { "anon-dh",        no_argument,       NULL,  0  },
         { "ethernet",       no_argument,       NULL,  0  },
         { "tap-fb",         required_argument, NULL,  0  },
+        { "secret",         required_argument, NULL,  0  }, /* 20 */
         { 0, 0, 0, 0 }
     };
 

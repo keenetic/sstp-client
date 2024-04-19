@@ -84,6 +84,8 @@ struct sstp_http
 
     /*! The uuid if set */
     char uuid[64];
+
+    char *secret;
 };
 
 
@@ -114,6 +116,7 @@ status_t sstp_http_create(sstp_http_st **http, const char *server,
     (*http)->host    = opts->host ?: opts->server;
     (*http)->mode    = mode;
     (*http)->eth_requested = (opts->enable & SSTP_OPT_ETHERNET);
+    (*http)->secret  = opts->secret;
 
     /* Create the buffer */
     ret = sstp_buff_create(&(*http)->buf, 8192);
@@ -282,8 +285,10 @@ static status_t sstp_http_send_hello(sstp_http_st *http,
     sstp_buff_reset(http->buf);
 
     /* Add the HTTP header */
-    ret = sstp_buff_print(http->buf, "SSTP_DUPLEX_POST %s HTTP/1.1\r\n",
-            SSTP_HTTP_DFLT_PATH);
+    ret = sstp_buff_print(http->buf, "SSTP_DUPLEX_POST %s%s%s HTTP/1.1\r\n",
+            SSTP_HTTP_DFLT_PATH,
+            http->secret != NULL ? "?" : "",
+            http->secret != NULL ? http->secret : "");
     if (SSTP_OKAY != ret)
     {
         return ret;

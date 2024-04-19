@@ -89,6 +89,8 @@ typedef struct
 
     char *tap_fb;
 
+    char *secret;
+
 } sstp_option_st;
 
 
