@@ -504,7 +504,10 @@ status_t sstp_verify_cert(sstp_stream_st *ctx, const char *host, int opts)
     X509_NAME *name = NULL;
     X509 *peer = NULL;
     char result[256];
-    
+
+    log_info("Current algo is %s",
+        SSL_CIPHER_get_name(SSL_get_current_cipher(ctx->ssl)));
+
     /* Get the peer certificate */
     peer = SSL_get_peer_certificate(ctx->ssl);
     if (!peer)
