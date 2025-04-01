@@ -326,7 +326,7 @@ static status_t sstp_http_send_hello(sstp_http_st *http,
     }
 
     {
-        char padbuf[96];
+        char padbuf[512];
         const size_t padbuflen = 2 + rand() % (sizeof(padbuf) - 2);
 
         for (size_t i = 0; i < padbuflen - 1; ++i)

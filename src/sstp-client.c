@@ -30,6 +30,7 @@
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
+#include <math.h>
 
 
 #include "sstp-private.h"
@@ -510,9 +511,58 @@ done:
     return ret;
 }
 
+static inline double ndm_distrib_gauss(const unsigned int step) {
+	if (step > 2)
+		return 0;
+
+	const double u = 2.0L * (rand() * 1.0L / RAND_MAX) - 1.0L;
+	const double v = 2.0L * (rand() * 1.0L / RAND_MAX) - 1.0L;
+	const double r = u * u + v * v;
+
+	if (r == 0 || r >= 1)
+		return ndm_distrib_gauss(step + 1);
+
+	const double c = sqrt(-2.0L * log(r) / r);
+
+	return u * c;
+}
+
+static inline double ndm_distrib_lognorm(const double mu, const double sigma)
+{
+	return exp(sigma * ndm_distrib_gauss(0) + mu);
+}
+
+static inline unsigned int ndm_distrib_lognorm_descrete_trunc(
+		const double mu,
+		const double sigma,
+		const unsigned int ceil_val)
+{
+	unsigned int count = 3;
+
+	while (count-- > 0) {
+		const double x = ndm_distrib_lognorm(mu, sigma);
+
+		if (x < ceil_val)
+			return (unsigned int)ceil(x);
+	}
+
+	return rand() % ceil_val;
+}
+
 static size_t padding_cb(SSL *s, int type, size_t len, void *arg)
 {
-    return rand() % ((len > 128) ? 128 : len); 
+	if (len > 576)
+		return len;
+
+	const size_t v = ndm_distrib_lognorm_descrete_trunc(5.5L, 1.85L, 1280);
+
+	if (len < 32)
+		return v;
+
+	if (len < v)
+		return v - len;
+
+	return v;
 }
 
 /*!
