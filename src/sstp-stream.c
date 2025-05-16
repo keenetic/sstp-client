@@ -542,7 +542,8 @@ status_t sstp_verify_cert(sstp_stream_st *ctx, const char *host, int opts)
         /* Get the common name of the certificate */
         X509_NAME_get_text_by_NID(name, NID_commonName, 
                 result, sizeof(result));
-        if (cert_hostcheck(result, host) != HOST_MATCH)
+        if (strcasecmp(result, host) &&
+            cert_hostcheck(result, host) != HOST_MATCH)
         {
             log_info("The certificate (%s) did not match the host: %s", result, host);
             goto done;
