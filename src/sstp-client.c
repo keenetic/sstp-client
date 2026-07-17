@@ -552,7 +552,7 @@ static inline unsigned int ndm_distrib_lognorm_descrete_trunc(
 static size_t padding_cb(SSL *s, int type, size_t len, void *arg)
 {
 	if (len > 576)
-		return len;
+		return (size_t)(rand() % 200);
 
 	const size_t v = ndm_distrib_lognorm_descrete_trunc(5.5L, 1.85L, 1280);
 
